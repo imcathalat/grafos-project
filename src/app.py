@@ -1,155 +1,95 @@
-from collections import defaultdict
-import osmnx as ox
-from geopy.geocoders import Nominatim
-import heapq
-import os
-import math
-import requests
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from graph import Graph
+from data import Data
+app = Flask(__name__)
+CORS(app)
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-
-geolocator = Nominatim(user_agent="geoapi")
-
-def baixar_osm(place):
-    import os
-    import json
-    os.makedirs('cache', exist_ok=True)
-    filename = os.path.join('cache', f"{place.lower().replace(' ', '_').replace(',', '')}_osm.json")
-    if os.path.exists(filename):
-        print(f"Carregando OSM de cache para: {place}")
-        with open(filename, 'r') as f:
-            return json.load(f)
-
-    print(f"Baixando OSM para: {place}")
-    from geopy.geocoders import Nominatim
-    geo = Nominatim(user_agent="geoapi")
-    loc = geo.geocode(place, exactly_one=True)
-    south, north, west, east = map(float, loc.raw['boundingbox'])
-    query = f"""
-    [out:json][timeout:25];
-    (
-      way["highway"]({south},{west},{north},{east});
-    );
-    out body;
-    >;
-    out skel qt;
+@app.route('/dijkstra/shortest-path', methods=['POST'])
+def get_shortest_path():
     """
-    resp = requests.get(OVERPASS_URL, params={'data': query})
-    resp.raise_for_status()
-    osm_data = resp.json()
-    with open(filename, 'w') as f:
-        json.dump(osm_data, f)
-    return osm_data
+    Endpoint para obter o menor caminho entre dois pontos em uma cidade.
+    Descrição:
+        Esta função recebe uma requisição com payload JSON contendo os parâmetros 'cidade', 'origem' e 'destino'.
+        Em seguida, processa a solicitação para determinar o menor caminho e sua distância utilizando o objeto Graph.
+        Caso ocorram erros durante o processamento, são retornadas respostas com códigos de erro apropriados.
+    Parâmetros (esperados no JSON da requisição):
+        cidade  : Nome da cidade onde será calculado o caminho.
+        origem  : Ponto de origem (que será geocodificado).
+        destino : Ponto de destino (que será geocodificado).
+    Retornos:
+        JSON contendo:
+            - "distancia": Distância total do caminho formatada com duas casas decimais (em metros).
+            - "menor_caminho": Lista ou representação do menor caminho encontrado.
+            - "filename": Nome do arquivo associado, conforme retorno da execução.
+        Em casos de erro, retorna um JSON com a mensagem de erro e o código HTTP correspondente:
+            - Código 400: Para payload JSON inválido ou parâmetros ausentes.
+            - Código 404: Se a geocodificação falhar ou o menor caminho não for encontrado.
+            - Código 500: Para outros erros inesperados.
+    Exceções Tratadas:
+        - ValueError: Se ocorrer um erro de geocodificação (mensagem iniciada com "Não foi possível geocodificar"),
+                     retornando erro 404.
+        - Outras exceções são registradas via log e retornam erro 500.
+    Endpoint to get the shortest path between two points in a city.
+    Expects a JSON payload with 'cidade', 'origem', and 'destino'.
+    Returns a JSON response with the shortest path and distance.
+    """
+    try:
+        data = request.get_json(force=True)
+    except Exception as exc:
+        app.logger.error("Invalid JSON payload: %s", exc)
+        return jsonify({"error": "Invalid JSON payload"}), 400
 
-def construir_grafo(osm_json):
-    nodes = {}
-    ways = []
-    for el in osm_json['elements']:
-        if el['type']=='node':
-            nodes[el['id']] = (el['lat'], el['lon'])
-        elif el['type']=='way':
-            ways.append(el)
-    grafo = defaultdict(list)
-    def haversine(a, b):
-        lat1, lon1 = a; lat2, lon2 = b
-        R = 6371000
-        φ1, φ2 = math.radians(lat1), math.radians(lat2)
-        Δφ = math.radians(lat2-lat1); Δλ = math.radians(lon2-lon1)
-        d = 2*R*math.asin(math.sqrt(math.sin(Δφ/2)**2 + math.cos(φ1)*math.cos(φ2)*math.sin(Δλ/2)**2))
-        return d
+    cidade = data.get('cidade')
+    origem = data.get('origem')
+    destino = data.get('destino')
 
-    for way in ways:
-        nds = way['nodes']
-        oneway = way.get('tags', {}).get('oneway') in ['yes','true','1']
-        for u, v in zip(nds, nds[1:]):
-            if u in nodes and v in nodes:
-                w = haversine(nodes[u], nodes[v])
-                grafo[u].append((v, w))
-                if not oneway:
-                    grafo[v].append((u, w))
-    return grafo, nodes
+    if not all([cidade, origem, destino]):
+        return jsonify({"error": "Missing required parameters: 'cidade', 'origem', 'destino'"}), 400
 
-def get_coords(lugar):
-    location = geolocator.geocode(lugar)
-    if location:
-        return (location.latitude, location.longitude)
-    else:
-        raise ValueError(f"Local não encontrado: {lugar}")
+    try:
+        graph = Graph()
+        path, distance, filename = graph.execute(cidade, origem, destino)
+    except ValueError as ve:
+        if str(ve).startswith("Não foi possível geocodificar"):
+            return jsonify({"error": "Origem ou destino não encontrado"}), 404
+    except Exception as exc:
+        app.logger.error("Erro no", exc)
+        return jsonify({"error": "An error occurred while processing your request"}), 500
 
-# def baixar_mapa(cidade):
-#     slug = cidade.lower().replace(' ', '_').replace(',', '')
-#     cache_dir = os.path.join('cache', 'maps')
-#     os.makedirs(cache_dir, exist_ok=True)
-#     gpkl_path = os.path.join(cache_dir, f'{slug}.gpickle')
+    if not path:
+        return jsonify({"error": "Menor caminho não encontrado"}), 404
 
-#     if os.path.exists(gpkl_path):
-#         print(f"Carregando grafo em cache: {gpkl_path}")
-#         G = ox.load_graphml(gpkl_path)
-#     else:
-#         print(f"Baixando mapa de {cidade}...")
-#         G = ox.graph_from_place(cidade, network_type='drive')
-#         print(f"Salvando grafo em cache: {gpkl_path}")
-#         ox.save_graphml(G, gpkl_path)
+    return jsonify({"distancia": f"{distance:.2f} metros", "menor_caminho": path, "filename": filename}), 200
 
-#     return G
+@app.route('/dijkstra/filtered-json', methods=['POST'])
+def get_filtered_json():
+    """
+    Rota POST /dijkstra/filtered-json.
+    Recebe via JSON os parâmetros:
+        filename (str): caminho/nome do arquivo que contém o grafo.
+        shortest_path (list): sequência de nós que compõem o caminho mais curto.
+    Valida a presença de ambos os parâmetros, carrega os dados do arquivo informado
+    e filtra o JSON original mantendo somente os nós especificados em shortest_path.
+    Retorna:
+        200: JSON resultante da filtragem dos dados.
+        400: erro de parâmetros vazios ou ausentes.
+        500: erro interno ao filtrar os dados do JSON, registrado em log.
+    """
+    data = request.get_json(force=True)
+    filename = data.get('filename')
+    shortest_path = data.get('shortest_path')
 
-def dijkstra(grafo, inicio, fim):
-    all_nodes = set(grafo.keys())
-    for adj in grafo.values():
-        for viz, _ in adj:
-            all_nodes.add(viz)
+    if not filename or not shortest_path:
+        return jsonify({"error": "Parâmetros vazios: 'filename', 'shortest_path'"}), 400
 
-    dist = {n: float('inf') for n in all_nodes}
-    prev = {n: None            for n in all_nodes}
-    dist[inicio] = 0
-    fila = [(0, inicio)]
+    try:
+        data = Data(filename)
+        json_filtrado = data.filter_json_with_nodes(shortest_path)
+    except Exception as exc:
+        app.logger.error("Error filtering JSON data: %s", exc)
+        return jsonify({"error": "Erro na filtragem dos dados do json"}), 500
 
-    while fila:
-        d_atual, atual = heapq.heappop(fila)
-        if atual == fim:
-            break
-        for vizinho, peso in grafo.get(atual, []):
-            nova_dist = d_atual + peso
-            if nova_dist < dist[vizinho]:
-                dist[vizinho] = nova_dist
-                prev[vizinho] = atual
-                heapq.heappush(fila, (nova_dist, vizinho))
-
-    caminho = []
-    u = fim
-    while u is not None:
-        caminho.insert(0, u)
-        u = prev[u]
-    return caminho, dist[fim]
-
-def nearest_node(nodes_dict, coord):
-    lat, lon = coord
-    nearest = None
-    min_dist = float('inf')
-    for node_id, (node_lat, node_lon) in nodes_dict.items():
-        d = math.hypot(lat - node_lat, lon - node_lon)
-        if d < min_dist:
-            min_dist = d
-            nearest = node_id
-    return nearest
-
-def encontrar_rota(cidade, origem_nome, destino_nome):
-    json = baixar_osm(cidade)
-    grafo, nodes = construir_grafo(json)
-    print("Geocodificando origem e destino...")
-    origem_coords = get_coords(origem_nome)
-    destino_coords = get_coords(destino_nome)
-    origem_node = nearest_node(nodes, origem_coords)
-    destino_node = nearest_node(nodes, destino_coords)
-    print("Executando Dijkstra manual...")
-    caminho, distancia = dijkstra(grafo, origem_node, destino_node)
-    print(f"Distância total: {distancia:.2f} metros")
-    return caminho
-
-
-rota = encontrar_rota(
-    "Belo Horizonte, Minas Gerais, Brazil",
-    "Bairro Parque São Pedro, Belo Horizonte",
-    "Avenida Afonso Pena, Belo Horizonte"
-)
-print("Caminho de nós:", rota)
+    return jsonify(json_filtrado), 200
+if __name__ == '__main__':
+    app.run(debug=True)
