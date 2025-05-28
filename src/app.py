@@ -49,7 +49,7 @@ def get_shortest_path():
 
     try:
         graph = Graph()
-        path, distance, filename = graph.execute(cidade, origem, destino)
+        path, distance, filename, arestas = graph.execute(cidade, origem, destino)
     except ValueError as ve:
         if str(ve).startswith("Não foi possível geocodificar"):
             return jsonify({"error": "Origem ou destino não encontrado"}), 404
@@ -60,7 +60,7 @@ def get_shortest_path():
     if not path:
         return jsonify({"error": "Menor caminho não encontrado"}), 404
 
-    return jsonify({"distancia": f"{distance:.2f} metros", "menor_caminho": path, "filename": filename}), 200
+    return jsonify({"distancia": f"{distance:.2f} metros", "menor_caminho": path, "arestas": arestas,"filename": filename}), 200
 
 @app.route('/dijkstra/filtered-json', methods=['POST'])
 def get_filtered_json():
@@ -91,5 +91,27 @@ def get_filtered_json():
         return jsonify({"error": "Erro na filtragem dos dados do json"}), 500
 
     return jsonify(json_filtrado), 200
+
+@app.route('/json/cidade', methods=['POST'])
+def download_json_map():
+    """
+    Rota GET /dijkstra/download-json-map.
+    Retorna um JSON contendo o mapa da cidade, incluindo nós e arestas.
+    Utiliza o método download_json_map da classe Data para obter os dados.
+    Retorna:
+        200: O caminho do arquivo .json baixado.
+        500: erro interno ao baixar o mapa, registrado em log.
+    """
+    data = request.get_json()
+    cidade = data.get('cidade')
+    try:
+        d = Data()
+        json_map, filename = d.baixar_osm(cidade)
+    except Exception as exc:
+        app.logger.error("Error downloading JSON map: %s", exc)
+        return jsonify({"error": "Erro ao baixar o mapa"}), 500
+
+    return jsonify({ "filename": filename }), 200
+
 if __name__ == '__main__':
     app.run(debug=True, host="127.0.0.1", port=5055)
