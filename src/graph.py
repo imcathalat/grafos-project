@@ -129,7 +129,15 @@ class Graph:
         nearest : mesmo tipo que as chaves de nodes_dict
             ID do nó cuja distância até a coordenada fornecida é a menor.
         """
-        lat, lon = coord
+        # Se coord for string "lat, lon", converte para floats
+        if isinstance(coord, str):
+            try:
+                lat, lon = map(float, coord.split(','))
+            except ValueError:
+                raise ValueError(f"Coordenadas inválidas: {coord}")
+        else:
+            lat, lon = coord
+
         nearest = None
         min_dist = float('inf')
         for node_id, (node_lat, node_lon) in nodes_dict.items():
@@ -137,21 +145,23 @@ class Graph:
             if d < min_dist:
                 min_dist = d
                 nearest = node_id
+        if nearest is None:
+            raise ValueError(f"Nenhuma coordenada encontrada para o nó mais próximo do ponto fornecido. Coordenadas: {coord}")
         return nearest
 
-    def execute(self, cidade, origem_nome, destino_nome):
+    def execute(self, origem_coords, destino_coords, filename):
         data = Data()
-        json, filename = data.baixar_osm(cidade)
+        json = data.get_json(filename)
+
+        if not json:
+            raise ValueError(f"Arquivo {filename} não encontrado ou vazio.")
+
         grafo, nodes = self.construir_grafo(json)
-
-        origem_coords = self.get_coords(origem_nome)
-        destino_coords = self.get_coords(destino_nome)
-
-        if not origem_coords or not destino_coords:
-            raise ValueError("Não foi possível geocodificar origem ou destino. Verifique os nomes fornecidos.")
-        
-        origem_node = self.nearest_node(nodes, origem_coords)
-        destino_node = self.nearest_node(nodes, destino_coords)
+        try:
+            origem_node = self.nearest_node(nodes, origem_coords)
+            destino_node = self.nearest_node(nodes, destino_coords)
+        except ValueError as e:
+            raise ValueError(f"Erro ao encontrar nós mais próximos: {e}")
 
         caminho, distancia = self.dijkstra(grafo, origem_node, destino_node)
 

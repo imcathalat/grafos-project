@@ -40,19 +40,19 @@ def get_shortest_path():
         app.logger.error("Invalid JSON payload: %s", exc)
         return jsonify({"error": "Invalid JSON payload"}), 400
 
-    cidade = data.get('cidade')
     origem = data.get('origem')
     destino = data.get('destino')
-
-    if not all([cidade, origem, destino]):
+    filename = data.get('filename')
+    if not all([origem, destino, filename]):
         return jsonify({"error": "Missing required parameters: 'cidade', 'origem', 'destino'"}), 400
 
     try:
         graph = Graph()
-        path, distance, filename, arestas = graph.execute(cidade, origem, destino)
+        path, distance, _, arestas = graph.execute(origem, destino, filename)
     except ValueError as ve:
         if str(ve).startswith("Não foi possível geocodificar"):
             return jsonify({"error": "Origem ou destino não encontrado"}), 404
+        return jsonify({"error": str(ve)}), 400
     except Exception as exc:
         app.logger.error("Erro no", exc)
         return jsonify({"error": "An error occurred while processing your request"}), 500
@@ -60,7 +60,7 @@ def get_shortest_path():
     if not path:
         return jsonify({"error": "Menor caminho não encontrado"}), 404
 
-    return jsonify({"distancia": f"{distance:.2f} metros", "menor_caminho": path, "arestas": arestas,"filename": filename}), 200
+    return jsonify({ "distancia": f"{distance:.2f} metros", "menor_caminho": path, "arestas": arestas }), 200
 
 @app.route('/dijkstra/filtered-json', methods=['POST'])
 def get_filtered_json():
@@ -106,7 +106,7 @@ def download_json_map():
     cidade = data.get('cidade')
     try:
         d = Data()
-        json_map, filename = d.baixar_osm(cidade)
+        _, filename = d.baixar_osm(cidade)
     except Exception as exc:
         app.logger.error("Error downloading JSON map: %s", exc)
         return jsonify({"error": "Erro ao baixar o mapa"}), 500
