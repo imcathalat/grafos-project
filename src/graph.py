@@ -129,7 +129,6 @@ class Graph:
         nearest : mesmo tipo que as chaves de nodes_dict
             ID do nó cuja distância até a coordenada fornecida é a menor.
         """
-        # Se coord for string "lat, lon", converte para floats
         if isinstance(coord, str):
             try:
                 lat, lon = map(float, coord.split(','))
