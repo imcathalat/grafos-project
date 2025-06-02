@@ -44,7 +44,7 @@ def get_shortest_path():
     destino = data.get('destino')
     filename = data.get('filename')
     if not all([origem, destino, filename]):
-        return jsonify({"error": "Missing required parameters: 'cidade', 'origem', 'destino'"}), 400
+        return jsonify({"error": "Missing required parameters: 'origem', 'destino', 'filename'"}), 400
 
     try:
         graph = Graph()
