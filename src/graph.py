@@ -94,6 +94,7 @@ class Graph:
           caminho vazio e distância infinita.
         - Utiliza uma fila de prioridade (heap) para selecionar o próximo nó de menor distância.
         """
+
         all_nodes = set(grafo.keys())
         for adj in grafo.values():
             for viz, _ in adj:
