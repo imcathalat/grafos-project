@@ -5,19 +5,7 @@ import requests
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
 class Data:
-    def filter_json_with_nodes(self, shortest_path):
-        with open(self.filename, 'r') as file:
-            data = json.load(file)
-
-        json_filtrado = {
-            "elements": [
-                element for element in data["elements"]
-                if element["id"] in shortest_path
-            ]
-        }
-        return json_filtrado
-    
-    def baixar_osm(self, place):
+    def baixar_osm(self, place: str):
         os.makedirs('cache', exist_ok=True)
         filename = os.path.join('cache', f"{place.lower().replace(' ', '_').replace(',', '')}_osm.json")
         from geopy.geocoders import Nominatim

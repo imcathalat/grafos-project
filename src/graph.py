@@ -33,6 +33,17 @@ class Graph:
                 ways.append(el)
         grafo = defaultdict(list)
         def haversine(a, b):
+            """
+            Calcula a distância em metros entre dois pontos na superfície terrestre
+            usando a fórmula de Haversine.
+
+            Parâmetros:
+                a (tuple[float, float]): Tupla (latitude, longitude) do ponto de origem em graus.
+                b (tuple[float, float]): Tupla (latitude, longitude) do ponto de destino em graus.
+
+            Retorna:
+                float: Distância entre os pontos em metros.
+            """
             lat1, lon1 = a; lat2, lon2 = b
             R = 6371000
             φ1, φ2 = math.radians(lat1), math.radians(lat2)
@@ -58,7 +69,7 @@ class Graph:
         else:
             return None
 
-    def dijkstra(self, grafo, inicio, fim):
+    def dijkstra(self, grafo: dict, inicio, fim):
         """
         Executa o algoritmo de Dijkstra para encontrar o caminho de custo mínimo entre dois nós.
         Parâmetros
@@ -111,7 +122,7 @@ class Graph:
             u = prev[u]
         return caminho, dist[fim]
 
-    def nearest_node(self, nodes_dict, coord):
+    def nearest_node(self, nodes_dict: dict, coord: tuple):
         """
         Retorna o identificador do nó mais próximo de uma dada coordenada usando
         distância euclidiana.
@@ -148,12 +159,12 @@ class Graph:
             raise ValueError(f"Nenhuma coordenada encontrada para o nó mais próximo do ponto fornecido. Coordenadas: {coord}")
         return nearest
 
-    def execute(self, origem_coords, destino_coords, filename):
+    def execute(self, origem_coords: tuple, destino_coords: tuple, filename: str):
         data = Data()
-        json = data.get_json(filename)
-
-        if not json:
-            raise ValueError(f"Arquivo {filename} não encontrado ou vazio.")
+        try:
+            json = data.get_json(filename)
+        except FileNotFoundError:
+            raise ValueError(f"Arquivo {filename} não encontrado.")
 
         grafo, nodes = self.construir_grafo(json)
         try:

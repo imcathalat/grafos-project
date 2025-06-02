@@ -62,36 +62,6 @@ def get_shortest_path():
 
     return jsonify({ "distancia": f"{distance:.2f} metros", "menor_caminho": path, "arestas": arestas }), 200
 
-@app.route('/dijkstra/filtered-json', methods=['POST'])
-def get_filtered_json():
-    """
-    Rota POST /dijkstra/filtered-json.
-    Recebe via JSON os parâmetros:
-        filename (str): caminho/nome do arquivo que contém o grafo.
-        shortest_path (list): sequência de nós que compõem o caminho mais curto.
-    Valida a presença de ambos os parâmetros, carrega os dados do arquivo informado
-    e filtra o JSON original mantendo somente os nós especificados em shortest_path.
-    Retorna:
-        200: JSON resultante da filtragem dos dados.
-        400: erro de parâmetros vazios ou ausentes.
-        500: erro interno ao filtrar os dados do JSON, registrado em log.
-    """
-    data = request.get_json(force=True)
-    filename = data.get('filename')
-    shortest_path = data.get('shortest_path')
-
-    if not filename or not shortest_path:
-        return jsonify({"error": "Parâmetros vazios: 'filename', 'shortest_path'"}), 400
-
-    try:
-        data = Data(filename)
-        json_filtrado = data.filter_json_with_nodes(shortest_path)
-    except Exception as exc:
-        app.logger.error("Error filtering JSON data: %s", exc)
-        return jsonify({"error": "Erro na filtragem dos dados do json"}), 500
-
-    return jsonify(json_filtrado), 200
-
 @app.route('/json/cidade', methods=['POST'])
 def download_json_map():
     """
