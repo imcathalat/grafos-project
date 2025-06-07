@@ -2,6 +2,14 @@ let osmFilename = null;
 let bbox = null; // [S, W, N, E]
 let map, originMarker = null, destMarker = null, routeLine = null;;
 
+const spinner   = document.getElementById('spinner');
+const spinnerMsg = document.getElementById('spinnerMsg');
+function showSpinner(msg="Carregando...") {
+      spinnerMsg.textContent = msg;
+      spinner.classList.add('show');
+    }
+const hideSpin  = () => spinner.classList.remove('show');
+
 // prettier-ignore
 const API_LOCALIDADES = "https://servicodados.ibge.gov.br/api/v1/localidades";
 
@@ -52,6 +60,10 @@ async function loadForm() {
     // ---- submit estado/cidade ----
     form.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    resetMap(true); 
+    showSpinner("Seu mapa está sendo carregado..."); 
+
     const estadoNome = estadoSelect.options[estadoSelect.selectedIndex].text;
     const cidadeNome = cidadeSelect.value;
 
@@ -71,6 +83,7 @@ async function loadForm() {
     osmFilename = data.filename;
     bbox = data.bbox;
     initMap();
+    hideSpin(); 
     });
 }
 
@@ -160,9 +173,13 @@ function initMap() {
 
 
 document.getElementById("btnCalcular").addEventListener("click", async () => {
+
+    
     const parseCoord = (id) => document.getElementById(id).value.split(",").map(Number);
     const [olat, olng] = parseCoord("origemCoord");
     const [dlat, dlng] = parseCoord("destinoCoord");
+
+    showSpinner("Calculando a menor rota...");
 
     const res = await fetch("http://127.0.0.1:5055/dijkstra/shortest-path", {
     method: "POST",
@@ -185,7 +202,28 @@ document.getElementById("btnCalcular").addEventListener("click", async () => {
     const latlngs = data.menor_caminho.map(([lat, lng]) => [lat, lng]);
     L.polyline(latlngs, { weight: 4, color: "#ffd500" }).addTo(map);
     stat.innerText = `Distância: ${data.distancia}`;
+    hideSpin(); 
 });
+
+function resetMap(hideContainer = false) {
+  if (map) {
+    map.off();
+    map.remove();
+    map = null;
+  }
+  if (routeLine) { routeLine.remove(); routeLine = null; }
+  originMarker = destMarker = null;
+
+  document.getElementById("origemCoord").value = "";
+  document.getElementById("destinoCoord").value = "";
+  document.getElementById("btnCalcular").disabled = true;
+  document.getElementById("status").innerText = "";
+
+  if (hideContainer) {
+    document.getElementById("map").classList.add("d-none");
+    document.getElementById("instructions").classList.add("d-none");
+  }
+}
 
 
 document.addEventListener("DOMContentLoaded", loadForm);

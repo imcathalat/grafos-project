@@ -4,54 +4,80 @@
       --mp-light: #f6f6f6;
     }
 
-    html,
-    body {
-      min-height: 100vh;
-      margin: 0;
-    }
+html,
+body {
+  min-height: 100vh;
+  margin: 0;
+}
 
-    body {
-      font-family: "Inter", sans-serif;
-      background: radial-gradient(circle at 20% 30%, var(--mp-primary) 0%, #f6f6f6 100%);
-      color: black;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      padding: 2rem 1rem 4rem;
-      gap: 2rem;
-    }
+body {
+  font-family: "Inter", sans-serif;
+  background: radial-gradient(circle at 20% 30%, var(--mp-primary) 0%, #f6f6f6 100%);
+  color: black;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 2rem 1rem 4rem;
+  gap: 2rem;
+}
 
-    /* .card-glass {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(14px) saturate(150%);
-      border-radius: 1.75rem;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
-      width: 100%;
-      max-width: 960px;
-      padding: 2.5rem 2rem;
-    } */
+/* .card-glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(14px) saturate(150%);
+  border-radius: 1.75rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  width: 100%;
+  max-width: 960px;
+  padding: 2.5rem 2rem;
+} */
 
-    #map {
-      height: 460px;
-      border-radius: 1rem;
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
-    }
+#map {
+  height: 460px;
+  border-radius: 1rem;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
 
-    .form-select {
-      background-color: var(--mp-light);
-      color: #333;
-    }
+.form-select {
+  background-color: var(--mp-light);
+  color: #333;
+}
 
-    .btn-primary {
-      background-color: var(--mp-secondary);
-      border: none;
-    }
+.btn-primary {
+  background-color: var(--mp-secondary);
+  border: none;
+}
 
-    .btn-primary:hover {
-      background-color: #e37f00;
-    }
+.btn-primary:hover {
+  background-color: #e37f00;
+}
 
-    input[readonly] {
-      background-color: #e9ecef;
-    }
+input[readonly] {
+  background-color: #e9ecef;
+}
+
+.spinner-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+  z-index: 1050;           /* acima de tudo */
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity .3s;
+  color:beige
+}
+
+.spinner-overlay.show {
+  visibility: visible;
+  opacity: 1;
+}
+
+.spinner-border {
+  width: 4rem;
+  height: 4rem;
+  border-width: .5rem;
+}

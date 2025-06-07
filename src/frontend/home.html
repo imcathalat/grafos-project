@@ -28,7 +28,7 @@
         <select id="cidade" class="form-select" required disabled></select>
       </div>
       <div class="col-12 d-grid mt-2">
-        <button class="btn btn-primary btn-lg" type="submit">Baixar mapa</button>
+        <button class="btn mt-2 btn-primary btn-lg" type="submit">Baixar mapa</button>
       </div>
     </form>
 
@@ -57,6 +57,14 @@
     </div>
 
     <div id="status" class="mt-3 text-center small fw-semibold"></div>
+  </div>
+
+  <!-- Overlay de carregamento -->
+  <div id="spinner" class="spinner-overlay">
+    <div class="text-center">
+      <div class="spinner-border text-light" role="status"></div>
+      <p id="spinnerMsg" class="mt-3 mb-0 fw-semibold">Carregando...</p>
+    </div>
   </div>
 
   <script src="script.js"></script>
