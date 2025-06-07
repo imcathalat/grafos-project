@@ -78,12 +78,12 @@ def download_json_map():
     estado = data.get('estado')
     try:
         d = Data()
-        _, filename, bounding_box = d.baixar_osm(cidade, estado)
+        _, filename, bbox = d.baixar_osm(cidade, estado)
     except Exception as exc:
         app.logger.error("Error downloading JSON map: %s", exc)
         return jsonify({"error": "Erro ao baixar o mapa"}), 500
 
-    return jsonify({ "filename": filename, "bounding_box": bounding_box }), 200
+    return jsonify({ "filename": filename, "bbox": bbox }), 200
 
 if __name__ == '__main__':
     app.run(debug=True, host="127.0.0.1", port=5055)

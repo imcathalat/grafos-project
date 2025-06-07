@@ -1,83 +1,175 @@
-var osm_filename;
+let osmFilename = null;
+let bbox = null; // [S, W, N, E]
+let map, originMarker = null, destMarker = null, routeLine = null;;
 
-async function load_form(){
+// prettier-ignore
+const API_LOCALIDADES = "https://servicodados.ibge.gov.br/api/v1/localidades";
 
+// =============== carrega estado/cidade ====================
+async function loadForm() {
     const estadoSelect = document.getElementById("estado");
     const cidadeSelect = document.getElementById("cidade");
     const form = document.getElementById("locationForm");
-    
 
+    // ---- preenche estados ----
     try {
-        const response = await fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome");
-        if(!response.ok) throw new Error("Erro ao carregar estados");
-        const estados = await response.json();
-        estadoSelect.innerHTML = `<option value="">Selecione o estado</option>`;
-        estados.forEach(estado => {
-          const option = document.createElement("option");
-          option.value = estado.id;
-          option.textContent = estado.nome;
-          estadoSelect.appendChild(option);
-        });
-    } catch (error) {
-        console.error(error);
+    const resp = await fetch(`${API_LOCALIDADES}/estados?orderBy=nome`);
+    if (!resp.ok) throw new Error("Falha ao carregar estados");
+    const estados = await resp.json();
+    estadoSelect.innerHTML =
+        '<option value="">Selecione o estado</option>';
+    estados.forEach((est) => {
+        const opt = document.createElement("option");
+        opt.value = est.id;
+        opt.textContent = est.nome;
+        estadoSelect.appendChild(opt);
+    });
+    } catch (err) {
+    console.error(err);
     }
 
+    // ---- ao trocar estado ----
     estadoSelect.addEventListener("change", async () => {
-        const estadoId = estadoSelect.value;
-        if (!estadoId) return;
-
-        cidadeSelect.disabled = true;
-        cidadeSelect.innerHTML = `<option>Carregando...</option>`;
-
-        cities_response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estadoId}/municipios`);
-
-        if (!cities_response.ok) {
-            cidadeSelect.innerHTML = `<option>Erro ao carregar cidades</option>`;
-            return;
-        }
-
-        const cidades = await cities_response.json();
-        cidadeSelect.disabled = false;
-            cidadeSelect.innerHTML = `<option value="">Selecione a cidade</option>`;
-            cidades.forEach(cidade => {
-                const option = document.createElement("option");
-                option.value = cidade.nome;
-                option.textContent = cidade.nome;
-                cidadeSelect.appendChild(option);
-            });
+    const id = estadoSelect.value;
+    if (!id) return;
+    cidadeSelect.disabled = true;
+    cidadeSelect.innerHTML = "<option>Carregando...</option>";
+    const res = await fetch(`${API_LOCALIDADES}/estados/${id}/municipios`);
+    if (!res.ok) return (cidadeSelect.innerHTML =
+        "<option>Erro ao carregar</option>");
+    const cidades = await res.json();
+    cidadeSelect.innerHTML =
+        '<option value="">Selecione a cidade</option>';
+    cidades.forEach((cid) => {
+        const opt = document.createElement("option");
+        opt.value = cid.nome;
+        opt.textContent = cid.nome;
+        cidadeSelect.appendChild(opt);
+    });
+    cidadeSelect.disabled = false;
     });
 
-    form.addEventListener("submit", async e => {
+    // ---- submit estado/cidade ----
+    form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const estadoNome = estadoSelect.options[estadoSelect.selectedIndex].text;
+    const cidadeNome = cidadeSelect.value;
 
-        console.log('[DEBUG] submit capturado');
-        e.preventDefault();
+    const res = await fetch("http://127.0.0.1:5055/json/cidade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cidade: cidadeNome, estado: estadoNome }),
+    });
 
-        const estadoNome = estadoSelect.options[estadoSelect.selectedIndex].text;
-        const cidadeNome = cidadeSelect.value;
-        const statusDiv = document.getElementById('status');
+    if (!res.ok) {
+        document.getElementById("status").innerText = "Falha ao baixar mapa";
+        return;
+    }
 
-        try {
-            const res = await fetch('http://127.0.0.1:5055/json/cidade', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cidade: cidadeNome, estado: estadoNome }),
-            });
-
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            const data = await res.json();            // { filename: 'bh.osm.pbf', ... }
-            statusDiv.textContent = `Sucesso: ${JSON.stringify(data)}`;
-
-            const filename = data.filename;
-            osm_filename = filename;
-
-            console.log("osm_filename:", osm_filename);
-            
-        } catch (err) {
-            statusDiv.textContent = 'Erro ao enviar dados.';
-            console.error(err);
-        }
+    const data = await res.json(); // { filename, bbox }
+    console.log('[DEBUG] resposta /json/cidade:', data);
+    osmFilename = data.filename;
+    bbox = data.bbox;
+    initMap();
     });
 }
 
-document.addEventListener('DOMContentLoaded', load_form);
+function initMap() {
+    if (map) {
+        map.off();
+        map.remove();
+        map = null;
+    }
+    originMarker = destMarker = null;
+
+    if (routeLine) {
+        routeLine.remove();
+        routeLine = null;
+    }
+
+    document.getElementById("map").classList.remove("d-none");
+    const mapDiv = document.getElementById("map");
+    mapDiv.classList.remove("d-none");
+    void mapDiv.offsetWidth; 
+
+    const [south, west, north, east] = bbox;
+    const center = [(south + north) / 2, (west + east) / 2];
+
+    map = L.map("map", { zoomControl: false }).setView(center, 13);
+    
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "© OpenStreetMap"
+    }).addTo(map);
+
+    map.fitBounds([
+    [south, west],
+    [north, east],
+    ]);
+
+    map.once('idle', () => map.invalidateSize());
+
+    // markers
+    const iconBase = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img";
+    const markerOpts = (color) => ({
+    iconUrl: `${iconBase}/marker-icon-${color}.png`,
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    });
+    const icons = { green: new L.Icon(markerOpts("green")), red: new L.Icon(markerOpts("red")) };
+
+    map.on("click", (e) => {
+    const { lat, lng } = e.latlng;
+    const fmt = (v) => v.toFixed(6);
+
+    if (!originMarker) {
+        originMarker = L.marker([lat, lng], { icon: icons.green }).addTo(map);
+        document.getElementById("origemCoord").value = `${fmt(lat)}, ${fmt(lng)}`;
+    } else if (!destMarker) {
+        destMarker = L.marker([lat, lng], { icon: icons.red }).addTo(map);
+        document.getElementById("destinoCoord").value = `${fmt(lat)}, ${fmt(lng)}`;
+        document.getElementById("btnCalcular").disabled = false;
+    } else {
+        // reseta seleção
+        map.removeLayer(originMarker);
+        map.removeLayer(destMarker);
+        originMarker = destMarker = null;
+        document.getElementById("origemCoord").value = "";
+        document.getElementById("destinoCoord").value = "";
+        document.getElementById("btnCalcular").disabled = true;
+    }
+    });
+}
+
+
+document.getElementById("btnCalcular").addEventListener("click", async () => {
+    const parseCoord = (id) => document.getElementById(id).value.split(",").map(Number);
+    const [olat, olng] = parseCoord("origemCoord");
+    const [dlat, dlng] = parseCoord("destinoCoord");
+
+    const res = await fetch("http://127.0.0.1:5055/dijkstra/shortest-path", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+        filename: osmFilename,
+        origem: { lat: olat, lng: olng },
+        destino: { lat: dlat, lng: dlng },
+    }),
+    });
+
+    const stat = document.getElementById("status");
+    const data = await res.json();
+    if (!res.ok) {
+    stat.innerText = data.error || "Falha na rota";
+    return;
+    }
+
+    // desenha rota
+    const latlngs = data.menor_caminho.map(([lat, lng]) => [lat, lng]);
+    L.polyline(latlngs, { weight: 4, color: "#ffd500" }).addTo(map);
+    stat.innerText = `Distância: ${data.distancia}`;
+});
+
+
+document.addEventListener("DOMContentLoaded", loadForm);
