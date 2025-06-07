@@ -26,68 +26,6 @@
     <div id="status" class="mt-3"></div>
   </div>
 
-  <script>
-    const estadoSelect = document.getElementById("estado");
-    const cidadeSelect = document.getElementById("cidade");
-    const form = document.getElementById("locationForm");
-    const statusDiv = document.getElementById("status");
-
-    // Carregar estados
-    fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome")
-      .then(res => res.json())
-      .then(estados => {
-        estadoSelect.innerHTML = `<option value="">Selecione o estado</option>`;
-        estados.forEach(estado => {
-          const option = document.createElement("option");
-          option.value = estado.id;
-          option.textContent = estado.nome;
-          estadoSelect.appendChild(option);
-        });
-      });
-
-    // Carregar cidades quando um estado é selecionado
-    estadoSelect.addEventListener("change", () => {
-      const estadoId = estadoSelect.value;
-      if (!estadoId) return;
-
-      cidadeSelect.disabled = true;
-      cidadeSelect.innerHTML = `<option>Carregando...</option>`;
-
-      fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estadoId}/municipios`)
-        .then(res => res.json())
-        .then(cidades => {
-          cidadeSelect.disabled = false;
-          cidadeSelect.innerHTML = `<option value="">Selecione a cidade</option>`;
-          cidades.forEach(cidade => {
-            const option = document.createElement("option");
-            option.value = cidade.nome;
-            option.textContent = cidade.nome;
-            cidadeSelect.appendChild(option);
-          });
-        });
-    });
-
-    // Enviar dados para o backend Python
-    form.addEventListener("submit", e => {
-      e.preventDefault();
-
-      const estadoNome = estadoSelect.options[estadoSelect.selectedIndex].text;
-      const cidadeNome = cidadeSelect.value;
-
-      fetch("http://localhost:5055/dijkstra/shortest-path", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cidade: cidadeNome, estado: estadoNome})
-      })
-        .then(res => res.json())
-        .then(data => {
-          statusDiv.textContent = `Dados enviados com sucesso: ${JSON.stringify(data)}`;
-        })
-        .catch(err => {
-          statusDiv.textContent = "Erro ao enviar dados.";
-          console.error(err);
-        });
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
