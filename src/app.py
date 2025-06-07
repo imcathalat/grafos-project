@@ -72,16 +72,18 @@ def download_json_map():
         200: O caminho do arquivo .json baixado.
         500: erro interno ao baixar o mapa, registrado em log.
     """
+    print("Iniciando download do mapa JSON")
     data = request.get_json()
     cidade = data.get('cidade')
+    estado = data.get('estado')
     try:
         d = Data()
-        _, filename = d.baixar_osm(cidade)
+        _, filename, bounding_box = d.baixar_osm(cidade, estado)
     except Exception as exc:
         app.logger.error("Error downloading JSON map: %s", exc)
         return jsonify({"error": "Erro ao baixar o mapa"}), 500
 
-    return jsonify({ "filename": filename }), 200
+    return jsonify({ "filename": filename, "bounding_box": bounding_box }), 200
 
 if __name__ == '__main__':
     app.run(debug=True, host="127.0.0.1", port=5055)

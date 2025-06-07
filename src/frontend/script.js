@@ -1,8 +1,12 @@
+var osm_filename;
+
 async function load_form(){
 
     const estadoSelect = document.getElementById("estado");
     const cidadeSelect = document.getElementById("cidade");
+    const form = document.getElementById("locationForm");
     
+
     try {
         const response = await fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome");
         if(!response.ok) throw new Error("Erro ao carregar estados");
@@ -41,31 +45,39 @@ async function load_form(){
                 option.textContent = cidade.nome;
                 cidadeSelect.appendChild(option);
             });
-        });
-    }
-
-
-
-    // Enviar dados para o backend Python
-    form.addEventListener("submit", e => {
-      e.preventDefault();
-
-      const estadoNome = estadoSelect.options[estadoSelect.selectedIndex].text;
-      const cidadeNome = cidadeSelect.value;
-
-      fetch("http://localhost:5055/json/cidade", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cidade: cidadeNome, estado: estadoNome})
-      })
-        .then(res => res.json())
-        .then(data => {
-          statusDiv.textContent = `Dados enviados com sucesso: ${JSON.stringify(data)}`;
-        })
-        .catch(err => {
-          statusDiv.textContent = "Erro ao enviar dados.";
-          console.error(err);
-        });
     });
+
+    form.addEventListener("submit", async e => {
+
+        console.log('[DEBUG] submit capturado');
+        e.preventDefault();
+
+        const estadoNome = estadoSelect.options[estadoSelect.selectedIndex].text;
+        const cidadeNome = cidadeSelect.value;
+        const statusDiv = document.getElementById('status');
+
+        try {
+            const res = await fetch('http://127.0.0.1:5055/json/cidade', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cidade: cidadeNome, estado: estadoNome }),
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const data = await res.json();            // { filename: 'bh.osm.pbf', ... }
+            statusDiv.textContent = `Sucesso: ${JSON.stringify(data)}`;
+
+            const filename = data.filename;
+            osm_filename = filename;
+
+            console.log("osm_filename:", osm_filename);
+            
+        } catch (err) {
+            statusDiv.textContent = 'Erro ao enviar dados.';
+            console.error(err);
+        }
+    });
+}
 
 document.addEventListener('DOMContentLoaded', load_form);

@@ -5,7 +5,7 @@ import requests
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
 class Data:
-    def baixar_osm(self, place: str):
+    def baixar_osm(self, cidade: str, estado: str):
         """
         Baixa dados de infraestrutura viária do OpenStreetMap para uma localidade específica.
 
@@ -33,6 +33,10 @@ class Data:
             OSError:
                 Se ocorrer erro ao criar o diretório de cache ou ao salvar o arquivo.
         """
+        place = f"{cidade}, {estado}" if estado else cidade
+        if not place:
+            raise ValueError("O parâmetro 'cidade' ou 'estado' deve ser fornecido.")
+        
         os.makedirs('cache', exist_ok=True)
         filename = os.path.join('cache', f"{place.lower().replace(' ', '_').replace(',', '')}_osm.json")
         from geopy.geocoders import Nominatim
@@ -53,7 +57,7 @@ class Data:
         osm_data = resp.json()
         with open(filename, 'w') as f:
             json.dump(osm_data, f)
-        return osm_data, filename
+        return osm_data, filename, (south, west, north, east)
 
     def get_json(self, filename):
         with open(filename, 'r') as file:
