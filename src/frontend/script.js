@@ -87,16 +87,20 @@ function initMap() {
         routeLine = null;
     }
 
-    document.getElementById("map").classList.remove("d-none");
+    document.getElementById("origemCoord").value = "";
+    document.getElementById("destinoCoord").value = "";
+    document.getElementById("btnCalcular").disabled = true;
+
     const mapDiv = document.getElementById("map");
     mapDiv.classList.remove("d-none");
-    void mapDiv.offsetWidth; 
+    document.getElementById("instructions").classList.remove("d-none");
+    void mapDiv.offsetWidth; // reflow
 
     const [south, west, north, east] = bbox;
     const center = [(south + north) / 2, (west + east) / 2];
 
     map = L.map("map", { zoomControl: false }).setView(center, 13);
-    
+
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: "© OpenStreetMap"
@@ -106,40 +110,52 @@ function initMap() {
     [south, west],
     [north, east],
     ]);
+    setTimeout(() => map.invalidateSize(), 0); 
 
-    map.once('idle', () => map.invalidateSize());
+    // ====== geocoder (lupa) ======
+      const geocoder = L.Control.geocoder({
+        defaultMarkGeocode: false,
+        placeholder: "Buscar endereço...",
+      }).addTo(map);
+
+      geocoder.on("markgeocode", (e) => {
+        handleSelection(e.geocode.center);
+      });
 
     // markers
     const iconBase = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img";
-    const markerOpts = (color) => ({
-    iconUrl: `${iconBase}/marker-icon-${color}.png`,
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
+    const markerIcon = (color) =>
+    new L.Icon({
+      iconUrl: `${iconBase}/marker-icon-${color}.png`,
+      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
     });
-    const icons = { green: new L.Icon(markerOpts("green")), red: new L.Icon(markerOpts("red")) };
-
-    map.on("click", (e) => {
-    const { lat, lng } = e.latlng;
+    function handleSelection(latlng) {
+    const { lat, lng } = latlng;
     const fmt = (v) => v.toFixed(6);
 
     if (!originMarker) {
-        originMarker = L.marker([lat, lng], { icon: icons.green }).addTo(map);
-        document.getElementById("origemCoord").value = `${fmt(lat)}, ${fmt(lng)}`;
+      originMarker = L.marker([lat, lng], { icon: markerIcon("green") }).addTo(map);
+      document.getElementById("origemCoord").value = `${fmt(lat)}, ${fmt(lng)}`;
+      map.setView([lat, lng], 15);          // dá foco
     } else if (!destMarker) {
-        destMarker = L.marker([lat, lng], { icon: icons.red }).addTo(map);
-        document.getElementById("destinoCoord").value = `${fmt(lat)}, ${fmt(lng)}`;
-        document.getElementById("btnCalcular").disabled = false;
+      destMarker = L.marker([lat, lng], { icon: markerIcon("red") }).addTo(map);
+      document.getElementById("destinoCoord").value = `${fmt(lat)}, ${fmt(lng)}`;
+      document.getElementById("btnCalcular").disabled = false;
     } else {
-        // reseta seleção
-        map.removeLayer(originMarker);
-        map.removeLayer(destMarker);
-        originMarker = destMarker = null;
-        document.getElementById("origemCoord").value = "";
-        document.getElementById("destinoCoord").value = "";
-        document.getElementById("btnCalcular").disabled = true;
+      // terceira seleção = reiniciar
+      map.removeLayer(originMarker);
+      map.removeLayer(destMarker);
+      originMarker = destMarker = null;
+      handleSelection(latlng);              // usa o clique atual como nova origem
     }
-    });
+  }
+
+  /* =========================================================
+     7. Clique no mapa → mesma lógica
+  ========================================================= */
+  map.on("click", (e) => handleSelection(e.latlng));
 }
 
 
