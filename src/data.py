@@ -33,14 +33,25 @@ class Data:
             OSError:
                 Se ocorrer erro ao criar o diretório de cache ou ao salvar o arquivo.
         """
+        from geopy.geocoders import Nominatim
+
         place = f"{cidade}, {estado}" if estado else cidade
         if not place:
             raise ValueError("O parâmetro 'cidade' ou 'estado' deve ser fornecido.")
-        
+
         os.makedirs('cache', exist_ok=True)
         filename = os.path.join('cache', f"{place.lower().replace(' ', '_').replace(',', '')}_osm.json")
-        from geopy.geocoders import Nominatim
         geo = Nominatim(user_agent="geoapi")
+
+        try:
+            with open(filename, 'r') as f:
+                osm_data = json.load(f)
+                loc = geo.geocode(place, exactly_one=True)
+                south, north, west, east = map(float, loc.raw['boundingbox'])
+                return osm_data, filename, (south, north, west, east)
+        except FileNotFoundError:
+            pass
+
         loc = geo.geocode(place, exactly_one=True)
         south, north, west, east = map(float, loc.raw['boundingbox'])
         query = f"""

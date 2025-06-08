@@ -165,7 +165,7 @@ class Graph:
         try:
             json = data.get_json(filename)
         except FileNotFoundError:
-            raise ValueError(f"Arquivo {filename} não encontrado.")
+            raise FileNotFoundError(f"Arquivo {filename} não encontrado.")
 
         grafo, nodes = self.construir_grafo(json)
         try:

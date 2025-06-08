@@ -10,13 +10,13 @@ def get_shortest_path():
     """
     Endpoint para obter o menor caminho entre dois pontos em uma cidade.
     Descrição:
-        Esta função recebe uma requisição com payload JSON contendo os parâmetros 'cidade', 'origem' e 'destino'.
+        Esta função recebe uma requisição com payload JSON contendo os parâmetros 'origem', 'destino' e 'filename'.
         Em seguida, processa a solicitação para determinar o menor caminho e sua distância utilizando o objeto Graph.
         Caso ocorram erros durante o processamento, são retornadas respostas com códigos de erro apropriados.
     Parâmetros (esperados no JSON da requisição):
-        cidade  : Nome da cidade onde será calculado o caminho.
-        origem  : Ponto de origem (que será geocodificado).
-        destino : Ponto de destino (que será geocodificado).
+        filename : Caminho do arquivo JSON contendo os dados do mapa da cidade.
+        origem   : Ponto de origem (que será geocodificado).
+        destino  : Ponto de destino (que será geocodificado).
     Retornos:
         JSON contendo:
             - "distancia": Distância total do caminho formatada com duas casas decimais (em metros).
@@ -74,9 +74,9 @@ def get_shortest_path():
 @app.route('/json/cidade', methods=['POST'])
 def download_json_map():
     """
-    Rota GET /dijkstra/download-json-map.
-    Retorna um JSON contendo o mapa da cidade, incluindo nós e arestas.
-    Utiliza o método download_json_map da classe Data para obter os dados.
+    Rota GET /json/cidade
+    Retorna um JSON contendo o mapa da cidade.
+    Utiliza o método baixar_osm da classe Data para obter os dados.
     Retorna:
         200: O caminho do arquivo .json baixado.
         500: erro interno ao baixar o mapa, registrado em log.
