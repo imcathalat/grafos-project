@@ -1,6 +1,8 @@
 let osmFilename = null;
 let bbox = null; // [S, W, N, E]
-let map, originMarker = null, destMarker = null, routeLine = null;;
+let map, originMarker = null, destMarker = null, routeLine = null;
+let routeLayer = null;            // polyline única
+let circleGroup  = null; 
 
 const spinner   = document.getElementById('spinner');
 const spinnerMsg = document.getElementById('spinnerMsg');
@@ -12,6 +14,14 @@ const hideSpin  = () => spinner.classList.remove('show');
 
 // prettier-ignore
 const API_LOCALIDADES = "https://servicodados.ibge.gov.br/api/v1/localidades";
+
+document.getElementById("btnReset").addEventListener("click", () => {
+  // limpa mapa / rota
+  resetMap(true);            // hideContainer = true
+  // some com o grafo renderizado
+  document.getElementById("grafoContainer").innerHTML = "";
+});
+
 
 // =============== carrega estado/cidade ====================
 async function loadForm() {
@@ -200,17 +210,32 @@ document.getElementById("btnCalcular").addEventListener("click", async () => {
     const data = await res.json();
     if (!res.ok) {
     stat.innerText = data.error || "Falha na rota";
+    hideSpin();
     return;
     }
+
+    const km = (parseFloat(data.distancia) / 1000).toFixed(2);
+    stat.innerText = `Menor distância: ${km} km`;
+
+    /* atualiza instruções */
+    const instr      = document.getElementById("instructions");
+    const nArestas   = data.arestas.length;
+    const nVertices  = nArestas + 1;
+    instr.classList.remove("d-none");   // garante visível
+    instr.innerHTML = `
+        Rota calculada com <strong>${nVertices}</strong> vértices
+        e <strong>${nArestas}</strong> arestas.<br>
+        Menor distância encontrada: <strong>${km} km</strong>.<br>
+        As bolinhas vermelhas representam os <strong>vértices do grafo</strong>.<br>
+        As linhas vermelhas representam as <strong>arestas do grafo</strong>.
+    `;
 
     // desenha rota
     // const latlngs = data.menor_caminho.map(([lat, lng]) => [lat, lng]);
     // L.polyline(latlngs, { weight: 4, color: "#ffd500" }).addTo(map);
     // stat.innerText = `Distância: ${data.distancia}`;
 
-    const metros = parseFloat(data.distancia); 
-    const km     = (metros / 1000).toFixed(2);
-    stat.innerText = `Menor Distância: ${km} km`;
+    desenharRota(data.arestas);
     hideSpin(); 
 });
 
@@ -233,6 +258,79 @@ function resetMap(hideContainer = false) {
     document.getElementById("instructions").classList.add("d-none");
   }
 }
+
+function desenharRota(arestas) {
+  if (!map || !Array.isArray(arestas) || arestas.length === 0) return;
+
+  // limpa rota anterior
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  if (originMarker) { map.removeLayer(originMarker); originMarker = null; }
+  if (destMarker)   { map.removeLayer(destMarker);   destMarker  = null; }
+  if (circleGroup) { map.removeLayer(circleGroup); circleGroup = null; }
+
+  // converte arestas -> lista contínua de vértices
+  const latlngs = [];
+  const toLatLng = (s) => s.split(",").map(Number);
+  const toLL = (s) => s.split(",").map(Number);
+
+  arestas.forEach((e, i) => {
+    const pA = toLL(e.origem);
+    const pB = toLL(e.destino);
+    if (i === 0) latlngs.push(pA);
+    latlngs.push(pB);
+  });
+
+  /* rota vermelha */
+  routeLayer = L.polyline(latlngs, { color: "red", weight: 6, opacity: 0.7 }).addTo(map);
+
+  /* bolinhas azuis em cada vértice */
+  circleGroup = L.layerGroup();
+  latlngs.forEach((p) =>
+    L.circleMarker(p, { radius: 6, color:  "#ff0000", fillColor: "#ff0000", weight: 2, fillOpacity: 1 })
+      .addTo(circleGroup)
+  );
+  circleGroup.addTo(map);
+
+  /* marcadores início/fim */
+  const iconBase = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img";
+  const mkIcon = (c) => new L.Icon({
+    iconUrl : `${iconBase}/marker-icon-${c}.png`,
+    shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    iconSize:[25,41], iconAnchor:[12,41],
+  });
+  originMarker = L.marker(latlngs[0],                 { icon: mkIcon("green") }).addTo(map);
+  destMarker   = L.marker(latlngs[latlngs.length-1],  { icon: mkIcon("red")   }).addTo(map);
+
+  map.fitBounds(routeLayer.getBounds());
+   map.once("idle", exportarImagem);  // gera PNG depois que tiles carregarem
+}
+
+function exportarImagem() {
+  leafletImage(map, (err, canvas) => {
+    if (err) { console.error("Falha na imagem:", err); return; }
+
+    const container = document.getElementById("grafoContainer");
+    container.innerHTML = "";                    // limpa saída anterior
+
+    /* título */
+    const h4 = document.createElement("h4");
+    h4.textContent = "Grafo de Menor Caminho";
+    container.appendChild(h4);
+
+    /* transforma canvas em <img> */
+    const img = document.createElement("img");
+    img.src = canvas.toDataURL("image/png");
+    img.alt = "Rota calculada";
+    img.style.maxWidth = "100%";
+    img.style.border = "1px solid #ccc";
+    container.appendChild(img);
+  });
+}
+
+/* botão opcional continua funcionando */
+document.getElementById("btnExport")?.addEventListener("click", exportarImagem);
+
+
 
 
 document.addEventListener("DOMContentLoaded", loadForm);
