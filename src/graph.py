@@ -3,6 +3,7 @@ from geopy.geocoders import Nominatim
 import heapq
 import math
 from data import Data
+import re
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
@@ -62,13 +63,6 @@ class Graph:
                         grafo[v].append((u, w))
         return grafo, nodes
 
-    def get_coords(self, lugar):
-        location = geolocator.geocode(lugar)
-        if location:
-            return (location.latitude, location.longitude)
-        else:
-            return None
-
     def dijkstra(self, grafo: dict, inicio, fim):
         """
         Executa o algoritmo de Dijkstra para encontrar o caminho de custo mínimo entre dois nós.
@@ -101,7 +95,7 @@ class Graph:
                 all_nodes.add(viz)
 
         dist = {n: float('inf') for n in all_nodes}
-        prev = {n: None            for n in all_nodes}
+        prev = {n: None for n in all_nodes}
         dist[inicio] = 0
         fila = [(0, inicio)]
 
@@ -179,6 +173,13 @@ class Graph:
         arestas = []
         for u, v in zip(caminho, caminho[1:]):
             peso = next((w for nbr, w in grafo[u] if nbr == v), None)
-            arestas.append((u, v, peso))
- 
+            orig_text = f"{nodes[u][0], nodes[u][1]}"
+            orig_text = re.sub(r"[()]", "", orig_text)
+            dest_text = f"{nodes[v][0], nodes[v][1]}"
+            dest_text = re.sub(r"[()]", "", dest_text)
+            arestas.append({
+                'origem': orig_text,
+                'destino': dest_text,
+                'peso': peso
+            })
         return caminho, distancia, filename, arestas
