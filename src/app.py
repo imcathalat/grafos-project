@@ -59,8 +59,6 @@ def get_shortest_path():
         graph = Graph()
         path, distance, _, arestas = graph.execute( (olat, olng), (dlat, dlng), filename)
     except ValueError as ve:
-        if str(ve).startswith("Não foi possível geocodificar"):
-            return jsonify({"error": "Origem ou destino não encontrado"}), 404
         return jsonify({"error": str(ve)}), 400
     except Exception as exc:
         app.logger.error("Erro no", exc)

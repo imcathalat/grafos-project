@@ -200,25 +200,25 @@ document.getElementById("btnCalcular").addEventListener("click", async () => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-        filename: osmFilename,
-        origem: { lat: olat, lng: olng },
-        destino: { lat: dlat, lng: dlng },
+      filename: osmFilename,
+      origem: { lat: olat, lng: olng },
+      destino: { lat: dlat, lng: dlng },
     }),
-    });
-
-    const stat = document.getElementById("status");
-    const data = await res.json();
+  });
+  
+    const instr = document.getElementById("instructions");
+    const stat  = document.getElementById("status");
+    const data  = await res.json();
     if (!res.ok) {
-    stat.innerText = data.error || "Falha na rota";
-    hideSpin();
-    return;
+      instr.innerHTML = `<strong>${data.error}</strong>` || "Falha na rota";
+      hideSpin();
+      return;
     }
 
     const km = (parseFloat(data.distancia) / 1000).toFixed(2);
     stat.innerText = `Menor distância: ${km} km`;
 
     /* atualiza instruções */
-    const instr      = document.getElementById("instructions");
     const nArestas   = data.arestas.length;
     const nVertices  = nArestas + 1;
     instr.classList.remove("d-none");   // garante visível

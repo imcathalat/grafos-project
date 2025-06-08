@@ -143,6 +143,19 @@ class Graph:
         else:
             lat, lon = coord
 
+        if isinstance(coord, str):
+            try:
+                lat, lon = map(float, coord.split(','))
+            except ValueError:
+                raise ValueError(f"Coordenadas inválidas: {coord}")
+        else:
+            lat, lon = coord
+
+        lats = [pt[0] for pt in nodes_dict.values()]
+        lons = [pt[1] for pt in nodes_dict.values()]
+        if lat < min(lats) or lat > max(lats) or lon < min(lons) or lon > max(lons):
+            raise ValueError(f"Por favor, escolha pontos de origem e destino dentro da cidade escolhida.")
+
         nearest = None
         min_dist = float('inf')
         for node_id, (node_lat, node_lon) in nodes_dict.items():
@@ -150,8 +163,7 @@ class Graph:
             if d < min_dist:
                 min_dist = d
                 nearest = node_id
-        if nearest is None:
-            raise ValueError(f"Nenhuma coordenada encontrada para o nó mais próximo do ponto fornecido. Coordenadas: {coord}")
+
         return nearest
 
     def execute(self, origem_coords: tuple, destino_coords: tuple, filename: str):
@@ -166,7 +178,7 @@ class Graph:
             origem_node = self.nearest_node(nodes, origem_coords)
             destino_node = self.nearest_node(nodes, destino_coords)
         except ValueError as e:
-            raise ValueError(f"Erro ao encontrar nós mais próximos: {e}")
+            raise ValueError(str(e))
 
         caminho, distancia = self.dijkstra(grafo, origem_node, destino_node)
 
