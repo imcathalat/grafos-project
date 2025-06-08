@@ -48,7 +48,7 @@ class Data:
                 osm_data = json.load(f)
                 loc = geo.geocode(place, exactly_one=True)
                 south, north, west, east = map(float, loc.raw['boundingbox'])
-                return osm_data, filename, (south, north, west, east)
+                return osm_data, filename, (south, west, north, east)
         except FileNotFoundError:
             pass
 
