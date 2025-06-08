@@ -79,7 +79,6 @@ def download_json_map():
         200: O caminho do arquivo .json baixado.
         500: erro interno ao baixar o mapa, registrado em log.
     """
-    print("Iniciando download do mapa JSON")
     data = request.get_json()
     cidade = data.get('cidade')
     estado = data.get('estado')
