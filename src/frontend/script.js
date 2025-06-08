@@ -179,6 +179,11 @@ document.getElementById("btnCalcular").addEventListener("click", async () => {
     const [olat, olng] = parseCoord("origemCoord");
     const [dlat, dlng] = parseCoord("destinoCoord");
 
+    if (isNaN(olat) || isNaN(olng) || isNaN(dlat) || isNaN(dlng)) {
+        alert("Coordenadas inválidas");
+        return;
+    }
+
     showSpinner("Calculando a menor rota...");
 
     const res = await fetch("http://127.0.0.1:5055/dijkstra/shortest-path", {
@@ -199,9 +204,13 @@ document.getElementById("btnCalcular").addEventListener("click", async () => {
     }
 
     // desenha rota
-    const latlngs = data.menor_caminho.map(([lat, lng]) => [lat, lng]);
-    L.polyline(latlngs, { weight: 4, color: "#ffd500" }).addTo(map);
-    stat.innerText = `Distância: ${data.distancia}`;
+    // const latlngs = data.menor_caminho.map(([lat, lng]) => [lat, lng]);
+    // L.polyline(latlngs, { weight: 4, color: "#ffd500" }).addTo(map);
+    // stat.innerText = `Distância: ${data.distancia}`;
+
+    const metros = parseFloat(data.distancia); 
+    const km     = (metros / 1000).toFixed(2);
+    stat.innerText = `Menor Distância: ${km} km`;
     hideSpin(); 
 });
 

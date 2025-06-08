@@ -43,12 +43,21 @@ def get_shortest_path():
     origem = data.get('origem')
     destino = data.get('destino')
     filename = data.get('filename')
+    
+    try:
+        olat = float(origem["lat"])
+        olng = float(origem["lng"])
+        dlat = float(destino["lat"])
+        dlng = float(destino["lng"])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"error": "Coordenadas inválidas"}), 400
+    
     if not all([origem, destino, filename]):
         return jsonify({"error": "Missing required parameters: 'origem', 'destino', 'filename'"}), 400
 
     try:
         graph = Graph()
-        path, distance, _, arestas = graph.execute(origem, destino, filename)
+        path, distance, _, arestas = graph.execute( (olat, olng), (dlat, dlng), filename)
     except ValueError as ve:
         if str(ve).startswith("Não foi possível geocodificar"):
             return jsonify({"error": "Origem ou destino não encontrado"}), 404
