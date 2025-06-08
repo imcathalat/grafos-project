@@ -211,6 +211,7 @@ document.getElementById("btnCalcular").addEventListener("click", async () => {
     const data  = await res.json();
     if (!res.ok) {
       instr.innerHTML = `<strong>${data.error}</strong>` || "Falha na rota";
+      stat.innerHTML = `<strong>${data.error}</strong>` || "Falha na rota";
       hideSpin();
       return;
     }
