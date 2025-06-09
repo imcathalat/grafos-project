@@ -13,15 +13,9 @@ cd grafos-project
 python -m venv venv
 ```
 3. Ative o ambiente virtual
-   - No Windows:
-    ```bash
-     venv\Scripts\activate
-    ```
-    - No Linux/Mac:
-    ```bash
-     source venv/bin/activate
-    ```
-
+ ```bash
+ venv\Scripts\activate
+ ```
 4. Instale as dependências do projeto
 ```bash
 pip install -r requirements.txt
